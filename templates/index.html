@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Style Transfer - Multi-Model</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+    <h1>🎨 Image Style Transfer Platform</h1>
+
+    <div class="upload-section">
+        <input type="file" id="uploadInput" multiple>
+        <button onclick="uploadImages()">📤 Upload</button>
+    </div>
+
+    <div class="model-options">
+        <label for="modelSelect">Choose Model:</label>
+        <select id="modelSelect">
+            <option value="cyclegan-turbo">CycleGAN-Turbo</option>
+            <option value="cut">CUT</option>
+            <option value="cyclegan">CycleGAN</option>
+            <option value="unsb">UNSB</option>
+        </select>
+    </div>
+
+    <div class="radio-group">
+        <label><input type="radio" name="style_mode" value="m2r" checked> Monet → Real</label>
+        <label><input type="radio" name="style_mode" value="r2m"> Real → Monet</label>
+    </div>
+
+    <div id="preview-container">
+        <div class="image-container">
+            <img id="previewOriginal" src="" alt="Original Image">
+            <p><strong>Original</strong></p>
+        </div>
+        <div class="image-container">
+            <img id="previewStyled" src="" alt="Styled Image">
+            <p><strong>Result</strong></p>
+        </div>
+    </div>
+
+    <div class="button-controls">
+        <button onclick="prevImage()">⬅️ Previous</button>
+        <button onclick="nextImage()">➡️ Next</button>
+        <button onclick="applyStyle()">✨ Apply Style</button>
+        <a id="downloadBtn" style="display:none" download>📥 Download</a>
+    </div>
+
+    <h2>🕒 Transformation History</h2>
+    <ul id="historyList"></ul>
+
+    <script src="/static/script.js"></script>
+
+</body>
+</html>

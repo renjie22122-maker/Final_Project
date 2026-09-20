@@ -1,0 +1,36 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments and local configuration
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# IDE and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Runtime-generated files
+cache/
+history/
+outputs/
+uploads/
+debug_log.txt
+
+# Common model/checkpoint binaries (keep lightweight metadata files)
+*.ckpt
+*.pth
+*.pt
+*.onnx
+*.safetensors
+

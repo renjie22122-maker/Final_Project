@@ -1,0 +1,12 @@
+Due to file size limitations, the trained models for this project are not included in the submitted supporting documents. If access to the trained models is required for reproduction or further research purposes, please feel free to contact lirenjie@bupt.edu.cn to request the model files. Alternatively, the compressed archive of the trained models can be directly downloaded via the following link:
+
+https://drive.google.com/file/d/1WkVsXojtnuFdLrzccfye1eWWCdMn_1kp/view?usp=sharing
+
+The compressed file size is approximately 1.39 GB, and the total size after extraction is 1.51 GB.
+
+
+由于文件大小限制，项目训练后的模型文件未包含在提交的 Supporting Documents 中。如有复现或进一步研究需要，欢迎通过邮箱 lirenjie@bupt.edu.cn 联系获取训练好的模型文件。您也可以通过以下链接直接下载模型压缩包：
+
+https://drive.google.com/file/d/1WkVsXojtnuFdLrzccfye1eWWCdMn_1kp/view?usp=sharing
+
+压缩包大小约为 1.39 GB，解压后文件总大小为 1.51 GB。
