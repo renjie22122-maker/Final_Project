@@ -9,20 +9,31 @@ from PIL import Image
 from torchvision import transforms
 
 # === 路径配置 ===
-UPLOAD_FOLDER = "uploads"
-OUTPUT_FOLDER = "outputs"
-MODEL_ROOT = "models"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+OUTPUT_FOLDER = os.path.join(BASE_DIR, "outputs")
+MODEL_ROOT = os.path.abspath(os.environ.get("MONET_MODEL_ROOT", os.path.join(BASE_DIR, "models")))
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
-CORS(app)
+app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
 conversion_history = []
 
 DIRECTION_MAP = {"m2r": "a2b", "r2m": "b2a"}
 
 import importlib.util
+
+def activate_backend(relative_path):
+    """Switch vendored model packages in this single-threaded local demo."""
+    source_root = os.path.normcase(os.path.join(BASE_DIR, "src"))
+    sys.path[:] = [p for p in sys.path if not os.path.normcase(os.path.abspath(p)).startswith(source_root + os.sep)]
+    for name in list(sys.modules):
+        if name.split(".")[0] in {"models", "data", "options", "util", "model", "cyclegan_turbo"}:
+            del sys.modules[name]
+    sys.path.insert(0, os.path.join(BASE_DIR, relative_path))
+
 
 def load_module_safely(module_name, module_path):
     """动态加载指定模块路径，返回模块对象"""
@@ -42,12 +53,7 @@ def transform_image_turbo(image_path, direction):
     from torchvision import transforms
     from transformers import AutoTokenizer, CLIPTextModel
 
-    sys.path = [p for p in sys.path if "src" not in p]  # 去掉所有 src 路径
-    for k in list(sys.modules.keys()):
-        if k.startswith("models") or k.startswith("data") or k.startswith("options"):
-            del sys.modules[k]
-
-    sys.path.insert(0, os.path.abspath("src/cyclegan_turbo/src"))  # 或 cut/unsb
+    activate_backend("src/cyclegan_turbo/src")
 
 
     from cyclegan_turbo import (
@@ -162,12 +168,7 @@ def transform_image_cyclegan(image_path, direction):
     from PIL import Image
 
     # 动态处理路径与模块冲突
-    sys.path = [p for p in sys.path if "src" not in p]  
-    for k in list(sys.modules.keys()):
-        if k.startswith("models") or k.startswith("data") or k.startswith("options"):
-            del sys.modules[k]
-
-    sys.path.insert(0, os.path.abspath("src/cyclegan"))  
+    activate_backend("src/cyclegan")
 
 
     from options.test_options import TestOptions
@@ -175,14 +176,14 @@ def transform_image_cyclegan(image_path, direction):
     from models import create_model
     from util.util import tensor2im
 
-    temp_dataroot = "temp_test_dir"
+    temp_dataroot = os.path.join(BASE_DIR, "temp_test_dir")
     os.makedirs(temp_dataroot, exist_ok=True)
     temp_image_path = os.path.join(temp_dataroot, os.path.basename(image_path))
     shutil.copy(image_path, temp_image_path)
 
     # direction -> name
     model_name = direction  
-    checkpoint_dir = os.path.join("models", "cyclegan")
+    checkpoint_dir = os.path.join(MODEL_ROOT, "cyclegan")
 
     opt_obj = TestOptions()
     parser = argparse.ArgumentParser()
@@ -220,7 +221,7 @@ def transform_image_cyclegan(image_path, direction):
         model.set_input(data)
         model.test()
         visuals = model.get_current_visuals()
-        image_tensor = visuals.get("fake_B") or visuals.get("fake")
+        image_tensor = visuals["fake_B"] if "fake_B" in visuals else visuals["fake"]
         break
 
     output_image = Image.fromarray(tensor2im(image_tensor))
@@ -240,12 +241,7 @@ def transform_image_cut(image_path, direction):
     from PIL import Image
 
     # === 添加 CUT 模型源码路径到 sys.path ===
-    sys.path = [p for p in sys.path if "src" not in p]  
-    for k in list(sys.modules.keys()):
-        if k.startswith("models") or k.startswith("data") or k.startswith("options"):
-            del sys.modules[k]
-
-    sys.path.insert(0, os.path.abspath("src/cut"))  
+    activate_backend("src/cut")
 
 
     from options.test_options import TestOptions
@@ -254,7 +250,7 @@ def transform_image_cut(image_path, direction):
     from util.util import tensor2im
 
     # === 配置参数 ===
-    opt = TestOptions().parse()
+    opt = TestOptions(cmd_line="--gpu_ids " + ("0" if torch.cuda.is_available() else "-1")).parse()
     opt.name = direction                      
     opt.model = "cut"
     opt.CUT_mode = "CUT"
@@ -268,7 +264,7 @@ def transform_image_cut(image_path, direction):
     opt.no_flip = True
     opt.num_threads = 0
     opt.batch_size = 1
-    opt.checkpoints_dir = os.path.abspath("models/cut")
+    opt.checkpoints_dir = os.path.join(MODEL_ROOT, "cut")
     opt.epoch = "400"           # 对应 400_net_G.pth
     opt.verbose = False         # 禁用 options 输出
 
@@ -298,7 +294,7 @@ def transform_image_cut(image_path, direction):
     # === 保存图像 ===
     output_image = Image.fromarray(tensor2im(output_tensor))
     output_filename = f"{uuid.uuid4().hex}.png"
-    output_path = os.path.join("outputs", output_filename)
+    output_path = os.path.join(OUTPUT_FOLDER, output_filename)
     output_image.save(output_path)
     return output_filename
 
@@ -310,12 +306,7 @@ def transform_image_unsb(image_path, direction):
     from torchvision import transforms
     import contextlib
 
-    sys.path = [p for p in sys.path if "src" not in p]  # 去掉所有 src 路径
-    for k in list(sys.modules.keys()):
-        if k.startswith("models") or k.startswith("data") or k.startswith("options"):
-            del sys.modules[k]
-
-    sys.path.insert(0, os.path.abspath("src/unsb"))  # 或 cut/unsb
+    activate_backend("src/unsb")
 
 
     from options.test_options import TestOptions
@@ -334,7 +325,7 @@ def transform_image_unsb(image_path, direction):
                 sys.stdout = old_stdout
 
     # 构造 temp_test_dir/testA 和 testB 结构
-    temp_root = "temp_test_dir"
+    temp_root = os.path.join(BASE_DIR, "temp_test_dir")
     testA_dir = os.path.join(temp_root, "testA")
     testB_dir = os.path.join(temp_root, "testB")
     os.makedirs(testA_dir, exist_ok=True)
@@ -351,14 +342,14 @@ def transform_image_unsb(image_path, direction):
 
     # 解析参数并静默打印
     with suppress_stdout():
-        opt = TestOptions().parse()
+        opt = TestOptions(cmd_line="--gpu_ids " + ("0" if torch.cuda.is_available() else "-1")).parse()
 
     # 手动修改参数
     opt.dataroot = temp_root
     opt.name = direction
     opt.model = "sb"
     opt.mode = "sb"
-    opt.checkpoints_dir = "models/unsb"
+    opt.checkpoints_dir = os.path.join(MODEL_ROOT, "unsb")
     opt.no_dropout = True
     opt.direction = "AtoB"  # 始终为 AtoB！
     opt.isTrain = False
@@ -407,7 +398,7 @@ def transform_image_unsb(image_path, direction):
     # 保存结果
     output_image = Image.fromarray(tensor2im(output_tensor))
     output_filename = f"{uuid.uuid4().hex}.png"
-    output_path = os.path.join("outputs", output_filename)
+    output_path = os.path.join(OUTPUT_FOLDER, output_filename)
     output_image.save(output_path)
 
     shutil.rmtree(temp_root)
@@ -421,20 +412,39 @@ def index():
 @app.route("/upload", methods=["POST"])
 def upload():
     files = request.files.getlist("file")
-    filenames = []
+    if not files or any(not f.filename for f in files):
+        return jsonify({"error": "Select at least one image"}), 400
+    # Validate the entire batch before saving any files.
+    validated = []
     for file in files:
-        path = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(path)
-        filenames.append(file.filename)
+        try:
+            img = Image.open(file.stream)
+            img.load()
+            validated.append(img.convert("RGB"))
+        except Exception:
+            return jsonify({"error": "Upload a valid image"}), 400
+    filenames = []
+    for img in validated:
+        filename = uuid.uuid4().hex + ".png"
+        img.save(os.path.join(UPLOAD_FOLDER, filename))
+        filenames.append(filename)
     return jsonify({"filenames": filenames})
 
 @app.route("/apply_style", methods=["POST"])
 def apply_style():
-    data = request.json
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Expected a JSON object"}), 400
     filename = data.get("filename")
+    if not isinstance(filename, str) or not filename or "/" in filename or "\\" in filename or filename in {".", ".."} or ":" in filename:
+        return jsonify({"error": "Invalid filename"}), 400
     direction = data.get("direction", "m2r")
     model_name = data.get("model", "cyclegan-turbo")
 
+    if direction not in {"m2r", "r2m"}:
+        return jsonify({"error": "Unknown direction"}), 400
+    if model_name not in {"cyclegan-turbo", "cyclegan", "cut", "unsb"}:
+        return jsonify({"error": "Unknown model"}), 400
     input_path = os.path.join(UPLOAD_FOLDER, filename)
     if not os.path.exists(input_path):
         return jsonify({"error": "File not found"}), 404
@@ -459,12 +469,12 @@ def apply_style():
         print("Error during transformation:\n", error_msg)
 
         # 写入 debug 日志
-        with open("debug_log.txt", "a", encoding="utf-8") as log_file:
+        with open(os.path.join(BASE_DIR, "debug_log.txt"), "a", encoding="utf-8") as log_file:
             log_file.write(f"\n[ERROR] model={model_name}, direction={direction}, filename={filename}\n")
             log_file.write(error_msg + "\n")
 
         # 返回错误信息给前端
-        return jsonify({"error": f"{str(e)}", "trace": error_msg}), 500
+        return jsonify({"error": "Inference failed; check model files and the local debug_log.txt"}), 500
 
     # 正常返回
     conversion_history.append({
@@ -488,4 +498,4 @@ def history():
     return jsonify({"history": conversion_history})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=False, threaded=False)

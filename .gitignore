@@ -34,3 +34,14 @@ debug_log.txt
 *.onnx
 *.safetensors
 
+
+# Large weights, runtime test data and archives
+*.pkl
+*.bin
+*.zip
+*.tgz
+*.tar.gz
+temp_test_dir/
+temp_test_input/
+checkpoints/
+*.log

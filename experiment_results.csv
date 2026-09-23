@@ -1,0 +1,5 @@
+model,time_seconds,monet_to_real_fid,monet_to_real_dino_similarity,real_to_monet_fid,real_to_monet_dino_similarity,source
+CycleGAN,0.01,118.42,0.7783,61.34,0.7290,original_report_chapter_4
+CUT,0.01,123.60,0.6161,68.72,0.4738,original_report_chapter_4
+UNSB,0.07,112.76,0.6022,57.55,0.4784,original_report_chapter_4
+CycleGAN-Turbo,0.13,103.43,0.2500,58.71,0.1879,original_report_chapter_4
